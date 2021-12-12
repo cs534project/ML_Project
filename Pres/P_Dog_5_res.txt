@@ -1,0 +1,4 @@
+Dog_5 -- {preictal:interictal} = {0.06:0.94}
+	CS-SVM:  Accuracy: 0.8931, Sensitivity: 0.3447, F1: 0.4797
+			with c = 5.00 r2 = 0.10
+	   SVM:  Accuracy: 0.8826, Sensitivity: 0.0000, F1: 0.0000

@@ -1,0 +1,4 @@
+Patient_7 -- {ictal:interictal} = {0.08:0.92}
+	CS-SVM:  Accuracy: 0.9963, Sensitivity: 0.9786, F1: 0.9769
+			with c = 5.00 r2 = 0.10
+	   SVM:  Accuracy: 0.9105, Sensitivity: 0.4689, F1: 0.6125
