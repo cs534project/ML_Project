@@ -1,0 +1,27 @@
+Graphs named as '*CR.png' are the ones I used to choose C and R value in my CS-SVM model
+Graphs named as '*TPBase*.png' are the matrix graph of [[TP,FN],[TN,FP]]/(N) for svm (the baseline)
+Graphs named as '*TPStretch*.png' are the same matrix graph for CS-svm (the stretch)
+
+
+Results are:
+
+
+Dog_1
+	CS-SVM:  Accuracy: 0.8591, Sensitivity: 0.7327, F1: 0.7789
+			with c = 8.00 r2 = 0.50
+	   SVM:  Accuracy: 0.8809, Sensitivity: 0.9652, F1: 0.7577
+
+Dog_4
+	CS-SVM:  Accuracy: 0.9928, Sensitivity: 0.9502, F1: 0.9575
+			with c = 8.00 r2 = 0.40
+	   SVM:  Accuracy: 0.9481, Sensitivity: 0.9714, F1: 0.5635
+
+Patient_2
+	CS-SVM:  Accuracy: 0.9768, Sensitivity: 0.7500, F1: 0.7622
+			with c = 1.00 r2 = 0.50
+	   SVM:  Accuracy: 0.9768, Sensitivity: 0.8980, F1: 0.7068
+
+Patient_3
+	CS-SVM:  Accuracy: 0.8924, Sensitivity: 0.8479, F1: 0.8239
+			with c = 2.00 r2 = 0.50
+	   SVM:  Accuracy: 0.8223, Sensitivity: 0.9034, F1: 0.6322

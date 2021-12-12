@@ -3,69 +3,38 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal
-import pyeeg
+import pyrem as pr
 
-def head_generate(channelNum,detec = 1):
-	fh = ''
-	'''
-	for i in range(channelNum*2):
-		fh+='fft_%2d,'%(i+1)
-	'''
-	bh = ''
-	th = ''
-	meh = ''
-	mmh = ''
-	for i in range(channelNum):
-		meh += 'mean_C%2d,'%(i+1)
-		mmh += 'max-min_C%2d,'%(i+1)
-		bh += 'delta_C%2d,'%(i+1)+'theta_C%2d,'%(i+1)+'alpha_C%2d,'%(i+1)\
-		+'beta_C%2d,'%(i+1)+'low_gamma_C%2d,'%(i+1)+'high_gamma_C%2d,'%(i+1)
-		th += 'hjorth_mobility_C%2d,'%(i+1)+'hjorth_complexity_C%2d,'%(i+1)
-		if detec == 1:
-			th += 'hfd_C%2d,'%(i+1)
-		th +='pfd_C%2d'%(i+1)
-		if i != channelNum-1:
-			th += ','
+def bandpower(x, fs, fmin, fmax):
+    f, Pxx = scipy.signal.periodogram(x, fs=fs,scaling = 'spectrum')
+    ind_min = np.argmax(f > fmin) - 1
+    ind_max = np.argmax(f > fmax) - 1
+    return np.trapz(Pxx[ind_min: ind_max], f[ind_min: ind_max])
 
-	res = '1,latency,' + meh + mmh + fh + bh + th
-
-	return res
-
-def normalization(Data):
-	meand = np.mean(Data)
-	stdd = np.std(Data)
-
-	return (Data - meand)/stdd
-
-def extract(Data,sample_freq,channelNum,time,detec = 1):
+def extract(Data,sample_freq,time,detec = 1):
 	mean = np.mean(Data,axis = 1)
 	maximum = np.amax(Data,axis = 1)
 	minimum = np.amin(Data,axis = 1)
 	stdv = np.std(Data,axis = 1)
-	freq_band = [0.1,4,8,12,30,70,180]
 
-	binP = []
-	timeDomain = []
-	for i in range(channelNum):
-		data = Data[i]
-		if detec == 1:
-			binP += list(pyeeg.bin_power(data,freq_band,sample_freq)[0])
-		else:
-			binP += list(pyeeg.bin_power(data,freq_band,sample_freq)[0]*(10**-5))
-		timeDomain += list(pyeeg.hjorth(data))
+	if detec == 1:
+		freq_band = [0.1,4,8,12,30,70,180]
+		ap = []
+		for j in range(16):
+			Dj = Data[j]
+			for f in range(len(freq_band)-1):
+				tmp = bandpower(Dj,sample_freq,freq_band[f],freq_band[f+1])
+				ap.append(np.log(tmp))
+	else:
 
-		if detec == 1:
-			timeDomain.append(pyeeg.hfd(data,4))
+		_,ap = scipy.signal.periodogram(Data,fs = sample_freq,nfft = 10)
 
-		timeDomain.append(pyeeg.pfd(data))
+		ap = list(ap.flatten())
 
-	'''
-	fft = np.fft.fft(Data,2).flatten()
-	print(len(Data[0]),len(fft))
-	tmpf = [1,time]+list(mean)+list(maximum - minimum)+list(fft)+binP+timeDomain
-	'''
-	tmpf = [1,time]+list(normalization(mean))+list(normalization(maximum - minimum))+binP+timeDomain
-	return np.nan_to_num(np.array(tmpf))
+
+	fft = scipy.fft.fft(Data,4).real.flatten()
+	tmpf = [1,time]+list(mean)+list(maximum - minimum)+ap+list(fft)
+	return np.array(tmpf)
 
 def detecData(observer):
 
@@ -74,7 +43,6 @@ def detecData(observer):
 	y = []
 	X = []
 	N = len(files) # number of data segments
-	cn = 0
 	for i in range(N): 
 		fn = files[i]
 
@@ -90,18 +58,18 @@ def detecData(observer):
 			emer = mat[k[6]][0]
 		else: # interictal
 			y.append(1)
-		cn,_ = mat[k[3]].shape
-		X.append(extract(mat[k[3]],mat[k[4]],cn,emer))
+
+		X.append(extract(mat[k[3]],mat[k[4]],emer))
 		print('processing file %d'%(i+1))
 
 
 	X = np.array(X)
 	y = np.array(y)
 
-	xn = 'Data\\D_' + observer + 'x.csv'
-	yn = 'Data\\D_' + observer + 'y.csv'
+	xn = 'D_' + observer + 'x.csv'
+	yn = 'D_' + observer + 'y.csv'
 
-	np.savetxt(xn, X, delimiter=",",header = head_generate(cn))
+	np.savetxt(xn, X, delimiter=",")
 	np.savetxt(yn, y, delimiter=",")
 
 def predictData(observer):
@@ -112,7 +80,7 @@ def predictData(observer):
 	y = []
 	X = []
 	N = len(files) # number of data segments
-	cn = 0
+
 	for i in range(N):
 		fn = files[i]
 
@@ -126,33 +94,31 @@ def predictData(observer):
 		D = mat[k[3]][0][0][0]
 		fs = mat[k[3]][0][0][2]
 		s = mat[k[3]][0][0][4][0][0]
-		cn,_ = D.shape
+
 		w = len(D[0])//10
-		
-		Ds = D.T[w*2:w*3].T
-		X.append(extract(Ds,fs,cn,s+0.2,0))
+		for q in range(9):
+			Ds = D.T[w*q:w*(q+1)].T
+			X.append(extract(Ds,fs,s+q*0.1,0))
 
-		Ds = D.T[w*5:w*6].T
-		X.append(extract(Ds,fs,cn,s+0.5,0))
 
-		Ds = D.T[w*7:w*8].T
-		X.append(extract(Ds,fs,cn,s+0.7,0))
+		Ds = D.T[9*w:].T
+		X.append(extract(Ds,fs,s+9*0.1,0))
 
 		if 'preictal' in k[3]: # preictal
-			y += [-1] * 3
+			y += [-1] * 10
 		else: # interictal
-			y += [1] * 3
+			y += [1] * 10
 		
 
-		print('processing %s file %d'%(observer, i+1))
+		print('processing file %d'%(i+1))
 
 	X = np.array(X)
 	y = np.array(y)
 
-	xn = 'Data\\P_' + observer + 'x.csv'
-	yn = 'Data\\P_' + observer + 'y.csv'
+	xn = 'P_' + observer + 'x.csv'
+	yn = 'P_' + observer + 'y.csv'
 
-	np.savetxt(xn, X, delimiter=",",header = head_generate(cn,0))
+	np.savetxt(xn, X, delimiter=",")
 	np.savetxt(yn, y, delimiter=",")
 
 
@@ -185,19 +151,20 @@ def checkD():
 
 # transform all the dataset
 def transform():
-	'''
+		
 	for i in range(1,5):
 		observer = 'Dog_%d'%i
 		detecData(observer)
 	for i in range(1,9):
 		observer = 'Patient_%d'%i
 		detecData(observer)
-	'''
-	for i in range(2,6):
+
+	for i in range(1,6):
 		observer = 'Dog_%d'%i
 		predictData(observer)
 	for i in range(1,3):
 		observer = 'Patient_%d'%i
 		predictData(observer)
+
 
 transform()
